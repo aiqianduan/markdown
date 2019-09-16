@@ -5,7 +5,7 @@ $ docker pull rabbitmq:management-alpine
 -- docker后台运行(5672:服务器与客户端交互端口,15672:web管理界面端口)
 $ docker run -d -p 5672:5672 -p 15672:15672 --name myrabbitmq IMAGE_ID
 -- 进入rabbitmq后台(name:guest;password:guest)
-127.0.0.1:15672
+127.0.0.1:15672 
 ```
 
 ## 导入maven依赖
