@@ -86,3 +86,24 @@ history
 ```vb
 clear
 ```
+
+## v2ray脚本
+```vb
+bash <(curl -s -L https://233blog.com/v2ray.sh)
+```
+
+## 包管理
+- 更新apt软件包
+```vb
+apt-get update
+```
+
+- 安装软件包
+```vb
+apt-get install package_name
+```
+
+- 搜索软件包
+```vb
+apt search name
+```
