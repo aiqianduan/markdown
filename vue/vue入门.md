@@ -1062,23 +1062,1279 @@ Vue.http.options.emulateJSON = true;
 #### 列表动画
 
 ```html
-<ul>
-    <!-- 在实现列表过渡的时候,如果需要过渡的元素,是通过v-for循环渲染出来的,
-		不能使用transition包裹,需要使用trnasitionGroup,其他的没变化 -->
-    <transition-group enter-active-class="animated rollIn" leave-active-class="animated rollOut" 					:duration="1500">
-           	<li v-for="item in list" :key="item.id">
-                {{item.id}}=>{{item.name}}
-            </li>
-    </transition-group>
-</ul>
+<!-- 在实现列表过渡的时候,如果需要过渡的元素,是通过v-for循环渲染出来的,
+	不能使用transition包裹,需要使用trnasitionGroup -->
+<!-- 给transition-group添加appear属性,实现页面加载入场时候的效果 -->
+<!-- tag:元素 => 指定transition-group渲染为指定元素,默认渲染为span -->
+<transition-group appear enter-active-class="animated rollIn" leave-active-class="animated hinge" 				:duration="1500" tag="ul">
+    <li v-for="item in list" :key="item.id">
+        {{item.name}}
+        <span><a href="" @click.prevent="remove(item.id)">删除</a></span>
+    </li>
+</transition-group>
+```
+
+### Vue组件
+
+> 什么是组件:组件的出现,就是为了拆分Vue实例的代码量,能够让我们以不同的组件,来划分不同的功能,将来我们需要什么样的功能,就可以去调用对应的组件
+
+#### 组件化和模块化的区别
+
++ 模块化: 是从代码逻辑的角度进行划分的；方便代码分层开发,保证每个代码模块的职能单一
++ 组件化: 是从UI界面的角度进行划分的；前端的组件化,方便UI组件的重用
+
+#### 全局组件定义的三种方式
+
+- 使用Vue.extend配合Vue.component方法
+
+```js
+var login = Vue.extend({
+	template: '<h1>登录</h1>'
+})
+Vue.component('login',login)
+```
+
+- 直接使用Vue.component方法
+
+```js
+Vue.component('register',{
+	template: '<h1>注册</h1>'
+})
+```
+
+- 将模板字符串,定义到script标签中
+
+```html
+<script id="impl" type="x-template">
+	<div><a href="#">登录</a> | <a href="注册"></a></div>
+</script>
+```
+
+同时,需要使用Vue.component来定义组件
+
+```js
+Vue.component('account',{
+	template: '#impl'
+})
+```
+
+**show me code**
+
+```html
+<!-- 在被空值的#app外面,使用template元素,定义组件的HTML结构 -->
+<template id="temp1">
+    <div>
+        <h1>这是通过template元素,在外部定义的组件结构</h1>
+        <span>great</span>
+    </div>
+</template>
+<template id="register">
+    <div>
+        <span>register</span>
+    </div>
+</template>
+
+<div id="app">
+    <!-- 如果要使用组件,直接,把组件的名称以HTML标签的形式,引入到页面中;驼峰命名需要转为'-':myComp1 => my-comp1 -->
+    <my-comp1></my-comp1>
+    <my-comp2></my-comp2>
+    <my-comp3></my-comp3>
+    <login></login>
+    <register></register>
+</div>
+
+<script>
+    /**
+    	注意: 不论哪种方式创建出来的组件,组件的template属性指向的模板内容,必须有且只能有唯一的一个根元素
+        如: <div><span></span></div> => <div></div><span></span>会报错,存在两个根元素
+    **/
+    //方式1. 使用Vue.extend创建全局Vue组件
+    var comp1 = Vue.extend({
+        template: '<h3>这是使用Vue.extend创建的组件</h3>'
+    })
+    Vue.component('myComp1', comp1)
+
+    //方式2. 使用Vue.component('组件的名称',创建出来的组件模板对象)
+    Vue.component('myComp2',{
+        template: '<div><h3>这是直接使用Vue.component创建出来的组件</h3></div>'
+    })
+
+    //方式3
+    Vue.component('myComp3',{
+        template: '#temp1'
+    })
+
+    var vm = new Vue({
+        el: '#app',
+        components: { //定义私有组件
+            login: {
+                template: '<h1>Login</h1>'
+            },
+            register: {
+                template: '#register'
+            }
+        }
+    })
+</script>
+```
+
+#### 组件定义data和method
+
+```html
+<div id="app">
+    <comp></comp>
+    <counter></counter>
+    <counter></counter>
+</div>
+
+<template id="temp1">
+    <div>
+        <input type="button" value="+1" @click="increment">
+        <h3>{{count}}</h3>
+    </div>
+</template>
+<script>
+    //var dataObj = {count: 0}
+    Vue.component('counter',{
+        template: '#temp1',
+        data: function() {
+            //需要在内部返回,如果使用全局组件会共享变量
+            return {count: 0}
+        },
+        methods: {
+            increment() {
+                this.count++
+            }
+        }
+    })
+
+    //组件可以有自己的data数据,组件的data和实例的data有点儿不一样,组件的data必须是一个方法,内部还必须返回一个对象
+    Vue.component('comp',{
+        template: '<h1>{{msg}}</h1>',
+        data: function() {
+            return {
+                msg: '这是组件中的data定义的数据'
+            }
+        }
+    })
+
+    var vm = new Vue({
+        el: '#app',
+        data: {},
+        methods: {}
+    })
+</script>
+```
+
+#### 组件切换
+
+- 方式1：
+
+```html
+<div id="app">
+    <a href="" @click.prevent="flag = true">登录</a>
+    <a href="" @click.prevent="flag = false">注册</a>
+    <login v-if="flag"></login>
+    <register v-else="flag"></register>
+</div>
+<script>
+    Vue.component('login',{
+        template: '<h1>login</h1>'
+    })
+
+    Vue.component('register',{
+        template: '<h1>register</h1>'
+    })
+
+    var vm = new Vue({
+        el: '#app',
+        data: {
+            flag: true
+        }
+    })
+</script>
+```
+
+- 方式2:<component>实现组件切换
+
+```html
+<div id="app">
+    <a href="" @click.prevent="comName = 'login'">登录</a>
+    <a href="" @click.prevent="comName = 'register'">注册</a>
+    <!-- Vue提供了component,来展示对应名称的组件;component是一个占位符,:is可以用来栈实的组件名称,直接字符串需要单引号 -->
+    <!-- <component :is="'register'"></component> -->
+    <transition mode="out-in" enter-active-class="animated rollIn" leave-active-class="animated hinge" 				:duration="1500">
+        <component :is="comName"></component>
+    </transition>
+</div>
+<script>
+    Vue.component('login',{
+        template: '<h1>login</h1>'
+    })
+
+    Vue.component('register',{
+        template: '<h1>register</h1>'
+    })
+
+    var vm = new Vue({
+        el: '#app',
+        data: {
+            flag: true,
+            comName: 'login'
+        }
+    })
+</script>
+```
+
+#### 组件传值
+
+##### 父组件向子组件传值
+
+- 组件实例定义方式,一定要使用props属性来定义父组件传递过来的数据
+
+```html
+<div id="app">
+    <son :finfo="msg"></son>
+</div>
+
+<script>
+	var vm = new Vue({
+        el: '#app',
+        data: {
+            //data上的数据,都是可读可写的
+            msg: '这是父组件的消息'
+        },
+        components: {
+            son: {
+                template: '<h1>子组件{{finfo}}</h1>',
+                //prop中的数据,都是只读的,无法重新赋值
+                props: ['finfo']
+            }
+        }
+    })
+</script>
+```
+
+##### 子组件调用父组件方法,向父组件传值
+
+```html
+<template id="temp1">
+    <div>
+        <h1>这是子组件</h1>
+        <input type="button" value="这是子组件的按钮,点击触发父组件传递过来的func方法" @click="myclick">
+    </div>
+</template>
+<div id="app">
+    <!-- 父组件向子组件传递方法,使用的是事件绑定机制;v-on,当我们定义了
+		一个事件属性之后,子组件就能够通过某些方式来调用这个方法 -->
+    <comp1 @func="show"></comp1>
+</div>
+<script>
+    var comp1 = {
+        template: '#temp1',
+        data() {
+            return {
+                sonmsg: {name: 'apple',price: 20}
+            }
+        },
+        methods: {
+            myclick() {
+                //当点击子组件的按钮,拿到父组件传递过来的func方法
+                //$emit() : 触发
+                this.$emit('func',this.sonmsg)
+            }
+        }
+    }
+
+    var vm = new Vue({
+        el: '#app',
+        data: {
+            msg: '父组件消息',
+            dataFromSon: null
+        },
+        methods: {
+            show(data) {
+                this.dataFromSon = data
+                //获取子组件传递过来的数据
+                console.log(data)
+            }
+        },
+        components: {
+            comp1
+        }
+    })
+</script>
+```
+
+##### 案例: 组件实现评论功能
+
+```html
+<div id="app">
+    <ul class="list-group">
+        <cmt-box @func="loadComment"></cmt-box>
+        <li class="list-group-item" v-for="item in list" :key="item.id">
+            <span class="badge">评论人: {{item.user}}</span>
+            {{item.content}}
+        </li>
+    </ul>
+</div>
+
+<template id="temp1">
+    <div>
+        <div class="form-group">
+            <label>评论人:</label>
+            <input type="text" class="form-control" v-model="user">
+        </div>
+        <div class="form-group">
+            <label>评论内容:</label>
+            <textarea class="form-control" v-model="content"></textarea>
+        </div>
+        <div class="form-group">
+            <input type="button" value="发表评论" class="btn btn-primary" @click="postComment">
+        </div>
+    </div>
+</template>
+<script>
+    var commentBox = {
+        template: '#temp1',
+        data() {
+            return {
+                user: '',
+                content: ''
+            }
+        },
+        template: '#temp1',
+        methods: {
+            /**
+                 * 发表评论的业务逻辑:
+                 * 1.评论数据存到哪里去? 存放到localStorage中 localStorage.setItem('cmts','')
+                 * 2.先组织出一个最新的评论数据对象
+                 * 3.想办法将第二步中得到的评论对象,存储到localStorage中
+                 *  3.1 localStorage只支持存放字符串数据,需要先调用JSON.stringify
+                 *  3.2 在保存的最新评论之前,先从localStorage中获取到之前的评论数据(string),转换为一个数组对象,然后把
+                 *      最新的评论,push到这个数组
+                 *  3.3 如果获取到localStorage中的评论字符串,为空不存在,则返回一个'[]' 让JSON.parse去转换
+                 *  3.4 把最新的评论列表数组,再次嗲用JSON.stringify转为数组字符串,然后调用localStorage.setItem()
+                 **/
+            postComment() {
+                var comment = {id: Date.now(),user:this.user,content: this.content}
+                var list = JSON.parse(localStorage.getItem('cmts') || '[]')
+                list.push(comment)
+                localStorage.setItem('cmts',JSON.stringify(list))
+                this.user = this.content = ''
+
+                this.$emit('func')
+            }
+        }
+    }
+    var vm = new Vue({
+        el:'#app',
+        data:{
+            list: [
+                {id: 1,user: 'libai',content: '天生我材必有用'},
+                {id: 2,user: '江小白',content: '劝君更进一杯酒'}
+            ]
+        },
+        created() {
+            this.loadComment()
+        },
+        methods:{
+            loadComment() {
+                var list = JSON.parse(localStorage.getItem('cmts') || '[]')
+                this.list = list
+            }
+        },
+        components: {
+            'cmt-box': commentBox
+        }
+    });
+</script>
+```
+
+#### 使用ref获取dom元素和组件引用
+
+```html
+<div id="app">
+    <input type="button" value="获取元素" @click="getElement">
+    <h3 ref="mynode">哈哈</h3>
+    <login ref="mylogin"></login>
+</div>
+<script>
+    var login = {
+        template: '<h1>登录组件</h1>',
+        data() {
+            return{
+                msg: 'son msg'
+            } 
+        },
+        methods: {
+            show() {
+                console.log('调用了子组件的方法')
+            }
+        }
+    }
+
+    var vm = new Vue({
+        el: '#app',
+        data: {},
+        methods: {
+            getElement() {
+                console.log(this.$refs.mylogin.msg) //son msg
+                this.$refs.mylogin.show()//调用了子组件的方法
+            }
+        },
+        components: {
+            login
+        }
+    });
+</script>
+```
+
+### Vue路由
+
+#### 什么是路由
+
+> 1. 后端路由: 对于普通网站,所有的超链接都是URL地址,所有的URL地址都对应服务器上对应的资源
+> 2. 前端路由:对于单页面应用程序来说,主要通过URL中的hash(#号)来实现不同页面之间的切换,同时,hash有一个特点:HTTP请求中不会包含hash相关的内容,所以,单页面程序中的页面跳转主要用hash来实现
+> 3. 在单页面应用程序中,这种通过hash改变来切换页面的方式,称作前端路由
+
+#### 在vue中使用vue-router
+
+1. 导入vue-router组件类库
+
+```html
+<script src="https://cdn.bootcss.com/vue-router/3.1.3/vue-router.min.js"></script>
+```
+
+2. 使用router-link组件来导航
+
+```html
+<!-- 使用router-link组件来导航 -->
+<router-link to="/login">登录</router-link>
+<router-link to="/register">注册</router-link>
+```
+
+3. 使用router-view组件来显示匹配到的组件
+
+```html
+<!-- 使用router-view组件来显示匹配到的组件 -->
+<router-view></router-view>
+```
+
+4. 使用<code>Vue.extend</code>创建组件
+
+```javascript
+// 使用Vue.extend来创建登录/注册组件
+var login = Vue.extend({
+	template: '<h1>登录组件</h1>'
+})
+var register = Vue.extend({
+    template: '<h1>注册组件</h1>'
+})
+```
+
+5. 创建一个路由router实例,通过routers属性来定义路由匹配规则
+
+```js
+var router = new VueRouter({
+    routes: [
+        {path： '/login',component: login},
+        {path: '/register',component: register}
+    ]
+})
+```
+
+6. 使用router属性来使用路由规则
+
+```js
+var vm = new Vue({
+    el: '#app',
+    router: router
+})
+```
+
+```html
+<div id="app">
+    <!-- 注意:此处需要加'#'号 -->
+    <!-- <a href="#/login">登录</a>
+	<a href="#/register">注册</a> -->
+    
+    <router-link to="/login">登录</router-link>
+    <router-link to="/register">注册</router-link>
+    <!-- 显示匹配到的组件 -->
+    <router-view></router-view>
+</div>
+<script>
+    var login = {
+        template: '<h1>登录组件</h1>'
+    }
+
+    var register = {
+        template: '<h1>注册组件</h1>'
+    }
+
+    //2.创建一个路由对象,当导入vue-router包之后,在window全局对象中,就有了一个路由的构造函数,叫做VueRouter
+    var routerObj = new VueRouter({
+        //表示路由匹配规则
+        routes: [
+            //每个路由规则,都是一个对象,{path: '表示监听哪个路由链接地址';
+            //component: '表示如果路由是前面匹配到的path,则显示对应组件(值必须是组件模板对象,不能是引用名称)'}
+            {path: '/',redirect: '/register'},
+            {path: '/login',component: login},
+            {path: '/register',component: register}
+        ],
+        //使用自定义class
+        //linkActiveClass: 'myactive'
+    })
+
+    var vm=new Vue({
+        el:'#app',
+        data:{},
+        methods:{},
+        //将路由规则对象注册到vm实例上,用来监听url地址的变化,然后展示对应的组件
+        //http://127.0.0.1:5500/router_basic.html#/ => 会使用#哈希路由
+        router: routerObj
+    });
+</script>
+```
+
+#### 路由传参
+
+- 方式1
+
+```html
+<div id="app">
+    <!-- 如果在路由中,使用查询字符串,给路由传参 -->
+    <router-link to="/login?id=10&name=zhangsan">登录</router-link>
+    <router-link to="/register">注册</router-link>
+    <router-view></router-view>
+</div>
+<script>
+    var login = {
+        template: '<h1>登录 --- {{$route.query.id}} --- {{$route.query.name}}</h1>'
+    }
+    var register = {
+        template: '<h1>注册</h1>'
+    }
+
+    var route = new VueRouter({
+        routes: [
+            {path: '/login',component: login},
+            {path: '/register',component: register}
+        ]
+    })
+
+    var vm = new Vue({
+        el:'#app',
+        router: route
+    });
+</script>
+```
+
+- 方式2
+
+```html
+<div id="app">
+    <!-- 如果在路由中,使用查询字符串,给路由传参 -->
+    <router-link to="/login/12/zhangsan">登录</router-link>
+    <router-view></router-view>
+</div>
+<script>
+    var login = {
+        template: '<h1>登录 --- {{$route.params.id}} --- {{$route.params.name}}</h1>'
+    }
+
+    var route = new VueRouter({
+        routes: [
+            {path: '/login/:id/:name',component:login}
+        ]
+    })
+
+    var vm = new Vue({
+        el:'#app',
+        router: route
+    });
+</script>
+```
+
+#### 路由嵌套
+
+```html
+<div id="app">
+    <router-link to="/account">Account</router-link>
+    <router-view></router-view>
+</div>
+<template id="temp1">
+    <div>
+        <h1>这是Account组件</h1>
+        <router-link to="/account/login">登录</router-link>
+        <router-link to="/account/register">注册</router-link>
+        <router-view></router-view>
+    </div>
+</template>
+
+<script>
+    var account = {
+        template: '#temp1'
+    }
+    var login = {
+        template: '<h1>登录</h1>'
+    }
+    var register = {
+        template: '<h1>注册</h1>'
+    }
+    var router = new VueRouter({
+        routes: [
+            {
+                path: '/account',
+                component: account,
+                children: [
+                    {path: 'login',component:login},
+                    {path: 'register',component:register}
+                ]
+            }
+            // {path: '/account/login',component: login},
+            // {path: '/account/register',component: register}
+        ]   
+    })
+    var vm = new Vue({
+        el:'#app',
+        router:router
+    });
+</script>
+```
+
+#### 命名视图实现经典布局
+
+1. 标签代码结构
+
+```html
+<div id="app">
+    <router-view></router-view>
+    <div class="content">
+        <router-view name="a"></router-view>
+    	<router-view name="b"></router-view>
+    </div>
+</div>
+```
+
+2. js代码结构
+
+```html
+<script>
+    var header = Vue.component('header',{
+        template: '<div class="header">header</div>'
+    })
+    var sidebar = Vue.component('sidebar',{
+        template: '<div class="sidebar">sidebar</div>'
+    })
+</script>
+```
+
+show me code
+
+```html
+<!-- css样式就不写了 -->
+<div id="app">
+    <router-view></router-view>
+    <div class="container">
+        <router-view name="left"></router-view>
+        <router-view name="main"></router-view>
+    </div>
+</div>
+<script>
+    var header = {
+        template: '<h1 class="header">header头部区域</h1>'
+    }
+    var leftbox = {
+        template: '<h1 class="left">leftbox侧边栏区域</h1>'
+    }
+    var mainbox = {
+        template: '<h1 class="main">mainbox主体区域</h1>'
+    }
+    var router = new VueRouter({
+        routes: [
+            {path: '/',components: {
+                default: header,
+                left: leftbox,
+                main: mainbox
+            }}
+        ]
+    })
+    var vm=new Vue({
+        el:'#app',
+        router: router
+    });
+</script>
+```
+
+### Vue监视
+
+#### 案例: watch监视名称改变
+
+```html
+<div id="app">
+    <input type="text" v-model="first_name"> + 
+    <input type="text" v-model="last_name"> =
+    <input type="text" v-model="fullname">
+</div>
+<script>
+    var vm = new Vue({
+        el: '#app',
+        data: {
+            first_name: '',
+            last_name: '',
+            fullname: ''
+        },
+        //使用这个属性,可以监视data中指定数据的变化,然后触发这个watch中对应的function处理函数
+        watch: {
+            first_name: function(newVal,oldVal) {
+                this.fullname = `${newVal}-${this.last_name}`
+            },
+            last_name: function() {
+                this.fullname = `${this.first_name}-${this.last_name}`
+            }
+        }
+    })
+</script>
+```
+
+#### watch监视路由改变
+
+```html
+<script>
+    var login = {
+        template: '<h1>登录</h1>'
+    }
+    var register = {
+        template: '<h1>注册</h1>'
+    }
+    var router = new VueRouter({
+        routes: [
+            {path: '/login',component: login},
+            {path: '/register',component: register}
+        ]
+    })
+    var vm = new Vue({
+        el: '#app',
+        router: router,
+        watch: {
+            '$route.path': function(newVal,oldVal) {
+                if(newVal === '/login') {
+                    console.log('欢迎登录')
+                } else if(newVal === '/register') {
+                    console.log('欢迎注册')
+                }
+            }
+        }
+    }) 
+</script>
+```
+
+### computed计算属性
+
+```html
+<script>
+    var vm=new Vue({
+        el:'#app',
+        data:{
+            firstname: '',
+            lastname: ''
+        },
+        methods:{},
+        //在computed中,可以定义一些属性,这些属性叫做计算属性,计算属性的本质就是一个方法,只不过我们
+        //在使用这些属性的时候,是把它们的名称直接当作属性来使用,并不会把计算属性当作方法去调用
+        computed: {
+            //只要计算属性这个function内部,所用到的任何data数据发生变化,就会重新计算这个属性的值
+            //计算属性的求值结果,会被缓存起来,方便下次使用,如果任何属性未发生改变,不会重新计算属性求值
+            'fullname': function() {
+                return this.firstname + '-' + this.lastname
+            }
+        }
+    })
+</script>
+```
+
+### vue render渲染
+
+```html
+<div id="app">
+    <login></login>
+</div>
+<script>
+    var login = {
+        template: '<h1>这是登录组件</h1>'
+    }
+    var vm = new Vue({
+        el:'#app',
+        /**
+        render(h) { //该形参是一个方法，能够把指定的组件模板渲染为html结构
+            //return的结果会直接替换el指定的那个容器(区别于components)
+            return h(login)
+        }
+        **/
+        render: h => h(login)
+    });
+</script>
 ```
 
 
+
+### NRM
+
+> 作用: 提供一些常见的NPM镜像地址,能够让我们快速的切换安装包时候的服务器地址
+
+nrm的安装使用
+
+```vb
+-- 全局安装nrm包
+$ npm i nrm -g
+-- 查看当前所有可用的镜像源地址以及当前使用的镜像源地址
+$ nrm ls
+-- 切换不同的镜像源地址
+$ nrm use npm 或 nrm use taobao...
+```
+
+### Webpack
+
+> webpack的详细上手,参考写的另一篇文章<<webpack使用教程>>
+
+#### 说明
+
+1. 网页中引用的常见静态资源
+
+   - JS
+     - .js .jsx .coffee .ts(TypeScript)
+
+   - CSS
+     - .css .less .sass=>.scss
+   - images
+     - .jpg .png .gif .bmp .svg
+   - 字体文件(fonts)
+     - .svg .ttf .eot .woff .woff2
+
+   - 模板文件
+     - .ejs .jade .vue[webpack中定义组件的方式]
+
+2. 引入过多静态资源的问题
+
+   - 网页加载速度慢,需要发起很多二次请求
+
+   - 要处理错综复杂的依赖关系
+
+3. 解决上述问题
+
+   - 合并,压缩,精灵图,图片的base64编码
+
+   - 使用requireJS
+   - Gulp,Webpack(推荐)
+
+4. webpack可以做什么事情
+
+   - 能处理js文件之间的互相依赖关系
+   - 能处理js的兼容问题,把高级的，浏览器不兼容的语法,转为低级的,浏览器能识别的语法
+
+#### webpack安装
+
+1. 全局安装webpack
+
+```vb
+$ npm i webpack -g
+```
+
+2. 在项目根目录安装到项目依赖中
+
+```vb
+$ npm i webpack --save-dev
+```
+
+#### webpack使用vue
+
+1. 安装vue
+
+```vb
+$ cnpm i vue -S
+```
+
+2. main.js导入vue.js(
+
+```js
+//在webpack中使用vue
+//注意: 在webpack中,使用import Vue from 'vue'导入的vue构造函数,功能不完整,只提供了runtime-only方式,并没有提供像网页中那样的使用方式
+//方式1:
+import Vue from '../node_modules/vue/dist/vue.js'
+//方式2:
+//第一步
+import Vue from 'vue'
+//第二步:在webpack.config.js设置导入路径
+module.exports = {
+    ...
+    resolve: {
+        alias: {
+          //设置vue被导入时的路径
+          'vue$': 'vue/dist/vue.js'
+        }
+  	}
+}
+
+/**
+  * 包的查找规则：
+  * 1. 找项目根目录中有没有node_modules文件夹
+  * 2. 在node_modules中根据包名找vue文件夹
+  * 3. 在vue文件夹中,找一个package.json的包配置文件
+  * 4. 在package.json文件中,查找一个main属性[main属性指定了这个包被加载时候的入口文件]
+  * "main": "dist/vue.runtime.common.js"不全
+  */
+var vm = new Vue({
+    el: '#app',
+    data: {
+        msg: '123'
+    }
+})
+```
+
+#### 实际开发使用vue
+
+1. 安装vue-loader
+
+```vb
+//用于.vue文件
+$ cnpm i vue-loader vue-template-compiler -D
+```
+
+2. src/login.vue文件(webpack中推荐.vue组件模板文件定义组件,由template,script,style组成)
+
+```vue
+<template>
+    <div>
+        <h1>这是登录组件</h1>
+    </div>
+</template>
+```
+
+3. main.js入口文件
+
+```js
+import Vue from 'vue'
+
+//导入login组件
+import login from './login.vue'
+
+/**
+  * 包的查找规则：
+  * 1. 找项目根目录中有没有node_modules文件夹
+  * 2. 在node_modules中根据包名找vue文件夹
+  * 3. 在vue文件夹中,找一个package.json的包配置文件
+  * 4. 在package.json文件中,查找一个main属性[main属性指定了这个包被加载时候的入口文件]
+  */
+var vm = new Vue({
+    el: '#app',
+    render(createElements) {
+        return createElements(login)
+    }
+})
+```
+
+4. webpack.config.js
+
+```js
+const path = require('path')
+//导入在内存中生成html页面的插件,只要是插件都要放到plugins节点中去
+const htmlWebpackPlugin = require('html-webpack-plugin')
+//导入vueloaderplugin
+const VueLoaderPlugin = require('vue-loader/lib/plugin')
+
+module.exports = {
+    entry: './src/main.js',
+    output: {
+        filename: 'bundle.js',
+        path: path.resolve(__dirname, 'dist')
+    },
+    plugins: [
+        //创建一个在内存中生成html页面的插件
+        new htmlWebpackPlugin({
+            //指定模板页面,将来会根据指定的模板路径生成内存中的页面
+            template: path.join(__dirname,'./src/index.html'),
+            //指定生成的页面名称
+            filename: 'index.html'
+        }),
+        new VueLoaderPlugin()
+    ],
+    module: { //这个节点用于配置所有第三方模块加载器
+        rules: [ //所有第三方模块的匹配规则
+            {test: /\.css$/,use: ['style-loader','css-loader']},
+            //配置处理.less文件的第三方loader
+            {test: /\.less$/,use: ['style-loader','css-loader','less-loader']},
+            {test: /\.scss$/,use: ['style-loader','css-loader','sass-loader']},
+            {test: /\.(jpg|png|gif|jpeg|bmp)$/,use: ['url-loader?limit=10&name=[hash:8][name].[ext]']},
+            {test: /\.(ttf|eot|svg|woff|woff2)$/,use: ['url-loader']},
+            //配置babel来转换高级的es语法
+            {test: /\.js$/,use: 'babel-loader',exclude: /node_modules/},
+            //配置文件转换vue
+            {test: /\.vue$/,use: 'vue-loader'}
+        ]
+    },
+    resolve: {
+        alias: {
+            //设置vue被导入时的路径
+            'vue$': 'vue/dist/vue.js'
+        }
+    }
+};
+```
+
+5. index.html
+
+```html
+<div id="app">
+    <login></login>
+</div>
+```
+
+#### export default和export
+
+> //node中向外暴露成员的形式
+>
+> module.exports = {}和exports = {}
+>
+> 
+>
+> //在es6中导入模块: import 模块名称 from '模块标识符' / import '表示路径'
+>
+> //es6向外暴露成员: export default/export
+>
+> 
+>
+> export:使用export向外暴露的成员,只能使用{}的形式接收,可以向外暴露多个成员
+>
+> export.default:在一个模块中,只允许向外暴露一次
+
+test.js
+
+```js
+// module.exports = {
+//     name: 'zhangsan',
+//     age: 20
+// }
+
+var info = {
+    name: 'zhangsan',
+    age: 20
+}
+
+export default info
+
+//可以不全部导出 import info,{title} => 只导出title
+export var title = 'hello'
+export var content = 'world'
+ecport var color = 'red'
+```
+
+main.js
+
+```js
+//export default暴露的,可以任意变量接收
+import person,{title,content,color as co} from './test.js'
+console.log(person) //{name:'zhangsan',age:20}
+console.log(title)  //hello
+console.log(content)//world
+console.log(co) //red
+```
+
+#### 结合webpack使用vue-router
+
+> 使用参考: [vue-router npm 安装](https://router.vuejs.org/zh/installation.html)
+
+1. 安装vue-router
+
+```vb
+npm install vue-router
+```
+
+2. 如果在一个模块化工程中使用它，必须要通过 `Vue.use()` 明确地安装路由功能：
+
+```js
+import Vue from 'vue'
+import VueRouter from 'vue-router'
+import account from './vue/account.vue'
+
+const router = new VueRouter({
+  routes: [
+    {path:'/login',component: account} //http://localhost:3000/#/login
+  ]
+})
+
+Vue.use(VueRouter)
+
+var vm = new Vue({
+    el: '#app',
+    render: h => h(app), //如果存在render,必须把router组件放入app.vue中
+    router
+})
+```
+
+3. account.vue
+
+```vue
+<template>
+    <div>
+        <h1>这是登录组件</h1>
+    </div>
+</template>
+
+<script>
+</script>
+
+<style scoped lang="scss">
+    /* 
+        scoped:定义为私有样式(默认全局样式) 
+        普通的style标签只支持普通的样式,如果要启用scss或less,需要为style元素,设置lang属性
+    */
+    body {
+        div {
+            color: red;
+        }
+    }
+</style>
+```
+
+4. app.vue
+
+```vue
+<template>
+    <div>
+        <h1>这是app组件</h1>
+        <router-view></router-view>
+    </div>
+</template>
+```
+
+##### 抽离路由模块
+
+- 新建router.js用于抽离router模块
+
+```js
+import VueRouter from 'vue-router'
+import account from './vue/account.vue'
+
+const router = new VueRouter({
+    routes: [
+        {path:'/login',component: account}
+    ]
+})
+
+export default router
+```
+
+- main.js
+
+```js
+import Vue from 'vue'
+import app from './vue/app.vue'
+import VueRouter from 'vue-router'
+Vue.use(VueRouter)
+
+import router from './router.js'
+
+var vm = new Vue({
+    el: '#app',
+    render: h => h(app),
+    router
+})
+```
+
+- 其他的不改变
+
+### Mint UI
+
+> 基于 Vue.js 的移动端组件库,只适用于vue项目(具体操作请参考官网,此处就只简单上手)
+
+1. 安装
+
+```vb
+// 安装
+# Vue 1.x
+npm install mint-ui@1 -S
+# Vue 2.0
+npm install mint-ui -S
+```
+
+2. 引入组件
+
+```js
+// 引入全部组件,部分引入配置见mint ui官网
+import Vue from 'vue';
+import Mint from 'mint-ui';
+Vue.use(Mint);
+// 按需引入部分组件,组件参考mint ui官网
+import { Cell, Checklist } from 'mint-ui';
+Vue.component(Cell.name, Cell);
+Vue.component(Checklist.name, Checklist);
+```
+
+3. app.vue
+
+```vue
+<template>
+    <div>
+        <mt-button type="default" @click="show">danger</mt-button>
+        <h1>这是app组件</h1>
+        <router-view></router-view>
+    </div>
+</template>
+
+<script>
+//导入toast
+import {Toast} from 'mint-ui'
+export default {
+    data() {
+        return {}
+    },
+    methods: {
+        show() {
+            Toast('hello')
+        }
+    }
+}
+</script>
+```
+
+### MUI
+
+> 使用方法:github>mui项目拷贝,复制dist目录到src>lib下
+
+- 在main.js引用
+
+```js
+//dist改名为mui,方便区分
+import './lib/mui/css/mui.min.css'
+```
+
+- 在app.vue中引用
+
+```vue
+<!-- 示例 -->
+<button type="button" class="mui-btn mui-btn-royal mui-btn-outlined">紫色</button> 
+```
+
+
+
+---
 
 资料参考
 
 [vue.js guide](https://cn.vuejs.org/v2/guide/)
 
+[vue-router guide](https://router.vuejs.org/zh/)
+
 [keycode键盘 按键 - 键码 对应表](https://www.cnblogs.com/yiven/p/7118056.html)
 
 [animate.css](https://daneden.github.io/animate.css/)
+
+[webpack](https://www.webpackjs.com/)
+
+[windows npm安装webpack](https://www.cnblogs.com/liuliwei/p/9202433.html)
+
+[webpack和webpack cli的安装卸载](https://www.cnblogs.com/ssw-men/p/10936173.html)
+
+[mint ui](https://mint-ui.github.io/#!/zh-cn)
