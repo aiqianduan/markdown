@@ -2317,6 +2317,88 @@ import './lib/mui/css/mui.min.css'
 <button type="button" class="mui-btn mui-btn-royal mui-btn-outlined">紫色</button> 
 ```
 
+### vuex
+
+> vuex是vue配套的公共数据管理工具,可以把一些共享的数据,保存到vuex中,方便整个程序中的任何组件直接获取或修改我们的公共数据
+
+- npm安装
+
+```vb
+$ npm install vuex --save
+```
+
+- main.js
+
+```js
+import Vue from 'vue'
+import Vuex from 'vuex'
+
+Vue.use(Vuex)
+```
+
+- 创建vuex实例,得到数据仓储对象,并挂载到vm实例上
+
+```js
+var store = new Vuex.Store({
+    state: {
+        //专门用于存储数据
+        count: 0
+    },
+    mutations: {
+        //如果要操作store中的state值,只能通过调用mutation提供的方法,才能操作对应的数据,
+        //不推荐直接操作state中的数据,避免数据紊乱,不能快速定位到错误原因
+        increment(state,num) {
+            state.count++
+        }
+    },
+    getters: {
+        //注意:getters,只负责对外提供数据,不负责修改数据,如果需要修改使用mutations
+        //$store.getters.mutations
+        mutations: function(state) {
+            //如果引用的state内部数据发生改变,就会触发
+            return state.count
+        }
+    }
+    //如果子组件想要调用mutations中的方法,只能使用this.$store.commit('方法名')
+})
+
+//1. state中的数据,不能直接修改,如果想修改,必须通过mutations
+//2. 如果组件想要直接从state中获取数据,需要this.$store.state.***
+//3. 如果组件,想要修改数据,必须使用mutations提供的方法,需要通过this.$store.commit('方法名称','可选参数')
+//4. 如果store中state上的数据,在对外提供的时候,需要做一层包装,推荐使用getters,如果需要使用getters,使用this.$store.getters.***
+
+var vm = new Vue({
+    el: '#app',
+    render: h => h(app),
+    router,
+    store //将vuex创建的store挂载到vm实例上
+})
+```
+
+- 获取vuex上的数据(不推荐)
+
+```html
+<h1>
+    <!-- 不推荐直接获取 -->	
+    {{$store.state.count}}
+</h1>
+
+<script>
+	export default() {
+        methods: {
+            countChanged() {
+                //调用vuex中increment方法
+                this.$store.commit('increment',1)
+            }
+    	}	
+    }
+</script>
+```
+
+
+
+
+
 
 
 ---
@@ -2326,6 +2408,8 @@ import './lib/mui/css/mui.min.css'
 [vue.js guide](https://cn.vuejs.org/v2/guide/)
 
 [vue-router guide](https://router.vuejs.org/zh/)
+
+[vuex guide](https://vuex.vuejs.org/zh/)
 
 [keycode键盘 按键 - 键码 对应表](https://www.cnblogs.com/yiven/p/7118056.html)
 
